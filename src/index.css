@@ -2,95 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* RWA Platform Design System - Premium Financial DeFi Aesthetic */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Base colors - Deep navy financial theme */
+    --background: 218 23% 8%;
+    --foreground: 210 40% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Card system - Elevated surfaces */
+    --card: 218 23% 12%;
+    --card-foreground: 210 40% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* Interactive elements */
+    --popover: 218 23% 12%;
+    --popover-foreground: 210 40% 95%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary - Golden asset color */
+    --primary: 43 96% 56%;
+    --primary-foreground: 218 23% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary - Stellar cyan */
+    --secondary: 190 100% 50%;
+    --secondary-foreground: 218 23% 8%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted elements */
+    --muted: 218 23% 16%;
+    --muted-foreground: 210 20% 65%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - Bright highlight */
+    --accent: 190 100% 50%;
+    --accent-foreground: 218 23% 8%;
 
-    --destructive: 0 84.2% 60.2%;
+    /* Status colors */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
+    
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Interface elements */
+    --border: 218 23% 20%;
+    --input: 218 23% 16%;
+    --ring: 43 96% 56%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom RWA Platform tokens */
+    --asset-gold: 43 96% 56%;
+    --asset-silver: 210 20% 80%;
+    --stellar-cyan: 190 100% 50%;
+    --platform-navy: 218 23% 8%;
+    --trading-green: 142 76% 36%;
+    --warning-amber: 38 92% 50%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(43 96% 56%), hsl(38 92% 50%));
+    --gradient-secondary: linear-gradient(135deg, hsl(190 100% 50%), hsl(180 100% 45%));
+    --gradient-background: linear-gradient(180deg, hsl(218 23% 8%), hsl(218 23% 6%));
+    --gradient-card: linear-gradient(145deg, hsl(218 23% 12%), hsl(218 23% 14%));
+    --gradient-border: linear-gradient(90deg, hsl(43 96% 56% / 0.2), hsl(190 100% 50% / 0.2));
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Shadows */
+    --shadow-primary: 0 10px 30px -10px hsl(43 96% 56% / 0.3);
+    --shadow-secondary: 0 10px 30px -10px hsl(190 100% 50% / 0.3);
+    --shadow-elegant: 0 20px 40px -15px hsl(218 23% 4% / 0.5);
+    --shadow-glow: 0 0 40px hsl(43 96% 56% / 0.4);
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar colors matching our design system */
+    --sidebar-background: 218 23% 12%;
+    --sidebar-foreground: 210 40% 95%;
+    --sidebar-primary: 43 96% 56%;
+    --sidebar-primary-foreground: 218 23% 8%;
+    --sidebar-accent: 218 23% 16%;
+    --sidebar-accent-foreground: 210 40% 95%;
+    --sidebar-border: 218 23% 20%;
+    --sidebar-ring: 43 96% 56%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    /* Dark mode - keeping the same premium RWA theme */
+    --background: 218 23% 6%;
     --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
+    --card: 218 23% 10%;
     --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
+    --popover: 218 23% 10%;
     --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
+    --primary: 43 96% 56%;
+    --primary-foreground: 218 23% 8%;
+    --secondary: 190 100% 50%;
+    --secondary-foreground: 218 23% 8%;
+    --muted: 218 23% 14%;
+    --muted-foreground: 210 20% 70%;
+    --accent: 190 100% 50%;
+    --accent-foreground: 218 23% 8%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+    --border: 218 23% 18%;
+    --input: 218 23% 14%;
+    --ring: 43 96% 56%;
+    --sidebar-background: 218 23% 6%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 43 96% 56%;
+    --sidebar-primary-foreground: 218 23% 8%;
+    --sidebar-accent: 218 23% 14%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 218 23% 18%;
+    --sidebar-ring: 43 96% 56%;
   }
 }
 
@@ -101,5 +125,48 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    background: var(--gradient-background);
+  }
+}
+
+@layer components {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+  
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+  
+  .shadow-primary {
+    box-shadow: var(--shadow-primary);
+  }
+  
+  .shadow-secondary {
+    box-shadow: var(--shadow-secondary);
+  }
+  
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+  
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+  
+  .border-gradient {
+    border-image: var(--gradient-border) 1;
   }
 }
