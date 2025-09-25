@@ -1,124 +1,171 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/hooks/useAuth';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
 
 const authSchema = z.object({
-  email: z.string().email('Invalid email address').max(255, 'Email must be less than 255 characters'),
-  password: z.string().min(6, 'Password must be at least 6 characters').max(100, 'Password must be less than 100 characters'),
-  fullName: z.string().trim().min(1, 'Full name is required').max(100, 'Name must be less than 100 characters').optional(),
+  email: z.string().trim().email({ message: "Invalid email address" }).max(255),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  fullName: z.string().trim().min(2, { message: "Full name must be at least 2 characters" }).max(100).optional(),
 });
 
 export default function Auth() {
-  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const { user, signUp, signIn } = useAuth();
-  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Redirect if already authenticated
   useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
-  }, [user, navigate]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        navigate('/');
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        navigate('/');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      const validation = authSchema.parse({ email, password, fullName });
-      
-      const { error } = await signUp(validation.email, validation.password, validation.fullName || '');
-      
+      const validatedData = authSchema.parse({ email, password, fullName });
+      const redirectUrl = `${window.location.origin}/`;
+
+      const { error } = await supabase.auth.signUp({
+        email: validatedData.email,
+        password: validatedData.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: validatedData.fullName,
+          }
+        }
+      });
+
       if (error) {
-        if (error.message.includes('User already registered')) {
+        if (error.message.includes('already registered')) {
           toast({
-            title: 'Account exists',
-            description: 'An account with this email already exists. Please sign in instead.',
-            variant: 'destructive',
+            title: "Account exists",
+            description: "This email is already registered. Please sign in instead.",
+            variant: "destructive",
           });
         } else {
           toast({
-            title: 'Sign up failed',
+            title: "Sign up failed",
             description: error.message,
-            variant: 'destructive',
+            variant: "destructive",
           });
         }
       } else {
         toast({
-          title: 'Check your email',
-          description: 'We sent you a confirmation link to complete your registration.',
+          title: "Check your email",
+          description: "We've sent you a confirmation link to complete your registration.",
         });
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
-          title: 'Validation error',
-          description: error.issues[0]?.message || 'Invalid input',
-          variant: 'destructive',
+          title: "Validation error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Sign up failed",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive",
         });
       }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      const validation = authSchema.omit({ fullName: true }).parse({ email, password });
-      
-      const { error } = await signIn(validation.email, validation.password);
-      
+      const validatedData = authSchema.omit({ fullName: true }).parse({ email, password });
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: validatedData.email,
+        password: validatedData.password,
+      });
+
       if (error) {
-        toast({
-          title: 'Sign in failed',
-          description: error.message,
-          variant: 'destructive',
-        });
+        if (error.message.includes('Invalid login credentials')) {
+          toast({
+            title: "Sign in failed",
+            description: "Invalid email or password. Please check your credentials.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Sign in failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
-          title: 'Validation error',
-          description: error.issues[0]?.message || 'Invalid input',
-          variant: 'destructive',
+          title: "Validation error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Sign in failed",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive",
         });
       }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/80 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="h1 text-primary mb-2">RWA Platform</h1>
-          <p className="text-muted-foreground">Access your tokenization dashboard</p>
+    <div className="min-h-screen bg-background flex flex-col">
+      <nav className="border-b border-border/10 backdrop-blur-sm">
+        <div className="container mx-auto px-6 py-4">
+          <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            RWA Platform
+          </Link>
         </div>
+      </nav>
 
-        <Card className="border-accent/20 shadow-xl">
+      <main className="flex-1 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md mx-auto border-border/20 bg-card/50 backdrop-blur-sm">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">Welcome</CardTitle>
-            <CardDescription>Sign in to your account or create a new one</CardDescription>
+            <CardTitle className="text-2xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Welcome
+            </CardTitle>
+            <CardDescription>
+              Sign in to access your RWA portfolio or create a new account
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
@@ -130,11 +177,10 @@ export default function Auth() {
                     <Input
                       id="signin-email"
                       type="email"
-                      placeholder="Enter your email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      disabled={isLoading}
+                      className="bg-background/50"
                     />
                   </div>
                   <div className="space-y-2">
@@ -142,20 +188,22 @@ export default function Auth() {
                     <Input
                       id="signin-password"
                       type="password"
-                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      disabled={isLoading}
+                      className="bg-background/50"
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Sign In
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={loading}
+                  >
+                    {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
                 </form>
               </TabsContent>
-              
+
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
@@ -163,11 +211,10 @@ export default function Auth() {
                     <Input
                       id="signup-name"
                       type="text"
-                      placeholder="Enter your full name"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
-                      disabled={isLoading}
+                      className="bg-background/50"
                     />
                   </div>
                   <div className="space-y-2">
@@ -175,11 +222,10 @@ export default function Auth() {
                     <Input
                       id="signup-email"
                       type="email"
-                      placeholder="Enter your email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      disabled={isLoading}
+                      className="bg-background/50"
                     />
                   </div>
                   <div className="space-y-2">
@@ -187,23 +233,25 @@ export default function Auth() {
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="Create a password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      disabled={isLoading}
+                      className="bg-background/50"
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Sign Up
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={loading}
+                  >
+                    {loading ? 'Creating account...' : 'Create Account'}
                   </Button>
                 </form>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }
