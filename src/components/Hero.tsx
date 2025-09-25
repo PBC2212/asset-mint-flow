@@ -34,8 +34,9 @@ const Hero = () => {
           <Button 
             size="lg" 
             className="text-lg px-8 py-4 gradient-primary hover:shadow-glow transition-smooth"
+            asChild
           >
-            Start Tokenizing
+            <a href="/auth">Start Tokenizing</a>
           </Button>
           <Button 
             variant="outline" 
