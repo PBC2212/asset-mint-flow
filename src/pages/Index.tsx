@@ -4,7 +4,7 @@ import Portfolio from "@/components/Portfolio";
 import SwapInterface from "@/components/SwapInterface";
 import TransparencyLedger from "@/components/TransparencyLedger";
 import { Navbar } from "@/components/Navbar";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const { loading } = useAuth();
