@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { AssetService } from '../services/assetService.js';
-import { stellarService } from '../services/stellarService.js';
-import { AppError, catchAsync } from '../middleware/errorHandler.js';
-import { AssetStatus } from '../types/asset.js';
-import { logger } from '../utils/logger.js';
+import { AssetService } from '../services/assetService.ts';
+import { stellarService } from '../services/stellarService.ts';
+import { AppError, catchAsync } from '../middleware/errorHandler.ts';
+import { AssetStatus } from '../types/asset.ts';
+import { logger } from '../utils/logger.ts';
 
 // Validation schemas
 const createAssetPledgeSchema = z.object({

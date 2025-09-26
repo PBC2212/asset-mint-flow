@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { SwapService } from '../services/swapService.js';
-import { WalletService } from '../services/walletService.js';
-import { AppError, catchAsync } from '../middleware/errorHandler.js';
-import { SwapRequest } from '../types/swap.js';
-import { logger } from '../utils/logger.js';
+import { SwapService } from '../services/swapService.ts';
+import { WalletService } from '../services/walletService.ts';
+import { AppError, catchAsync } from '../middleware/errorHandler.ts';
+import { SwapRequest } from '../types/swap.ts';
+import { logger } from '../utils/logger.ts';
 import pkg from '@stellar/stellar-sdk';
 const { Keypair } = pkg;
 

@@ -17,9 +17,9 @@ import {
   createPlatTokenAsset,
   getIssuerKeypair,
   getDistributorKeypair
-} from '../config/stellar.js';
-import { logger } from '../utils/logger.js';
-import { AppError } from '../middleware/errorHandler.js';
+} from '../config/stellar.ts';
+import { logger } from '../utils/logger.ts';
+import { AppError } from '../middleware/errorHandler.ts';
 
 export interface StellarAccountInfo {
   publicKey: string;

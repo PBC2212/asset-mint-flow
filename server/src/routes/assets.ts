@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { AssetController } from '../controllers/assetController.js';
-import { authenticate, requireKYC, requireWallet, optionalAuth, userRateLimit } from '../middleware/auth.js';
+import { AssetController } from '../controllers/assetController.ts';
+import { authenticate, requireKYC, requireWallet, optionalAuth, userRateLimit } from '../middleware/auth.ts';
 
 const router = Router();
 

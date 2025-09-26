@@ -1,7 +1,7 @@
-import { supabaseAdmin } from '../config/supabase.js';
-import { stellarService } from './stellarService.js';
-import { logger } from '../utils/logger.js';
-import { AppError } from '../middleware/errorHandler.js';
+import { supabaseAdmin } from '../config/supabase.ts';
+import { stellarService } from './stellarService.ts';
+import { logger } from '../utils/logger.ts';
+import { AppError } from '../middleware/errorHandler.ts';
 import {
   Asset,
   AssetStatus,
@@ -10,7 +10,7 @@ import {
   TokenMintRequest,
   AssetPortfolio,
   AssetAnalytics
-} from '../types/asset.js';
+} from '../types/asset.ts';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
@@ -292,7 +292,7 @@ export class AssetService {
       };
     } catch (error: any) {
       logger.error('AssetService.getPlatformAnalytics error:', error);
-      throw error instanceof AppError ? error : new AppError('Failed to get analytics', 500);
+      throw new AppError('Failed to get analytics', 500);
     }
   }
 

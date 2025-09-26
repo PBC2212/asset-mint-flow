@@ -1,8 +1,8 @@
-import { stellarService } from './stellarService.js';
-import { WalletService } from './walletService.js';
-import { supabaseAdmin } from '../config/supabase.js';
-import { logger } from '../utils/logger.js';
-import { AppError } from '../middleware/errorHandler.js';
+import { stellarService } from './stellarService.ts';
+import { WalletService } from './walletService.ts';
+import { supabaseAdmin } from '../config/supabase.ts';
+import { logger } from '../utils/logger.ts';
+import { AppError } from '../middleware/errorHandler.ts';
 import {
   SwapRequest,
   SwapQuote,
@@ -10,7 +10,7 @@ import {
   SwapStatus,
   LiquidityPool,
   SwapHistory
-} from '../types/swap.js';
+} from '../types/swap.ts';
 import { v4 as uuidv4 } from 'uuid';
 import pkg from '@stellar/stellar-sdk';
 const { Keypair } = pkg;

@@ -9,7 +9,7 @@ const {
   Memo,
   Horizon
 } = pkg;
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/logger.ts';
 
 // Network configuration
 export const STELLAR_CONFIG = {

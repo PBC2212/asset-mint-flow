@@ -43,12 +43,14 @@ export interface SwapExecution {
   userAddress: string;
 }
 
-export enum SwapStatus {
-  PENDING = 'pending',
-  CONFIRMED = 'confirmed',
-  FAILED = 'failed',
-  EXPIRED = 'expired'
-}
+export const SwapStatus = {
+  PENDING: 'pending',
+  CONFIRMED: 'confirmed',
+  FAILED: 'failed',
+  EXPIRED: 'expired'
+} as const;
+
+export type SwapStatus = typeof SwapStatus[keyof typeof SwapStatus];
 
 export interface LiquidityPool {
   platReserve: number;

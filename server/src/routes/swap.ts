@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { SwapController } from '../controllers/swapController.js';
-import { authenticate, requireKYC, requireWallet, optionalAuth, userRateLimit } from '../middleware/auth.js';
+import { SwapController } from '../controllers/swapController.ts';
+import { authenticate, requireKYC, requireWallet, optionalAuth, userRateLimit } from '../middleware/auth.ts';
 
 const router = Router();
 

@@ -1,10 +1,10 @@
 import { Keypair, Account, TransactionBuilder, Operation, Asset, Memo } from '@stellar/stellar-sdk';
-import { stellarServer, STELLAR_CONFIG, createPlatTokenAsset } from '../config/stellar.js';
-import { stellarService } from './stellarService.js';
-import { supabaseAdmin } from '../config/supabase.js';
-import { logger } from '../utils/logger.js';
-import { AppError } from '../middleware/errorHandler.js';
-import { WalletBalance, WalletTransaction } from '../types/swap.js';
+import { stellarServer, STELLAR_CONFIG, createPlatTokenAsset } from '../config/stellar.ts';
+import { stellarService } from './stellarService.ts';
+import { supabaseAdmin } from '../config/supabase.ts';
+import { logger } from '../utils/logger.ts';
+import { AppError } from '../middleware/errorHandler.ts';
+import { WalletBalance, WalletTransaction } from '../types/swap.ts';
 
 export class WalletService {
   /**

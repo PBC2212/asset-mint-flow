@@ -17,14 +17,16 @@ export interface Asset {
   updated_at: string | null;
 }
 
-export enum AssetStatus {
-  PENDING = 0,
-  VERIFIED = 1,
-  ACTIVE = 2,
-  REDEEMED = 3,
-  LIQUIDATED = 4,
-  REJECTED = 5
-}
+export const AssetStatus = {
+  PENDING: 0,
+  VERIFIED: 1,
+  ACTIVE: 2,
+  REDEEMED: 3,
+  LIQUIDATED: 4,
+  REJECTED: 5
+} as const;
+
+export type AssetStatus = typeof AssetStatus[keyof typeof AssetStatus];
 
 export interface AssetPledgeRequest {
   assetType: string;

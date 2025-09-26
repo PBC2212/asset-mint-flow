@@ -10,15 +10,14 @@ import { createServer } from 'http';
 dotenv.config();
 
 // Import configurations and middleware
-import { logger } from './utils/logger.js';
-import { errorHandler } from './middleware/errorHandler.js';
-import { supabaseAdmin } from './config/supabase.js';
+import { logger } from './utils/logger.ts';
+import { errorHandler } from './middleware/errorHandler.ts';
+import { supabaseAdmin } from './config/supabase.ts';
 
-// Import routes (we'll create these next)
-// import authRoutes from './routes/auth.js';
-// import assetRoutes from './routes/assets.js';
-// import tokenRoutes from './routes/tokens.js';
-// import walletRoutes from './routes/wallet.js';
+// Import routes
+import authRoutes from './routes/auth.ts';
+import assetRoutes from './routes/assets.ts';
+import swapRoutes from './routes/swap.ts';
 
 const app = express();
 const server = createServer(app);
@@ -67,15 +66,21 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-app.use('/api/v1', (req, res, next) => {
-  res.json({ message: 'RWA Platform API v1.0.0 - Routes coming soon!' });
-});
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/assets', assetRoutes);
+app.use('/api/v1/swap', swapRoutes);
 
-// Routes (uncomment as we create them)
-// app.use('/api/v1/auth', authRoutes);
-// app.use('/api/v1/assets', assetRoutes);
-// app.use('/api/v1/tokens', tokenRoutes);
-// app.use('/api/v1/wallet', walletRoutes);
+// Default API route
+app.use('/api/v1', (req, res) => {
+  res.json({ 
+    message: 'RWA Platform API v1.0.0',
+    endpoints: {
+      auth: '/api/v1/auth',
+      assets: '/api/v1/assets',
+      swap: '/api/v1/swap'
+    }
+  });
+});
 
 // 404 handler
 app.use('*', (req, res) => {

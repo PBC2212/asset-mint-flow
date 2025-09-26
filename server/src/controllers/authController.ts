@@ -1,47 +1,42 @@
-import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { supabaseAdmin } from '../config/supabase.js';
-import { JWTUtil } from '../utils/jwt.js';
-import { AppError, catchAsync } from '../middleware/errorHandler.js';
-import { stellarService } from '../services/stellarService.js';
-import { User, LoginCredentials, RegisterCredentials } from '../types/auth.js';
-import { logger } from '../utils/logger.js';
-import { Keypair } from '@stellar/stellar-sdk';
+import bcrypt from 'bcryptjs';
+import { supabaseAdmin } from '../config/supabase.ts';
+import { JWTUtil } from '../utils/jwt.ts';
+import { AppError, catchAsync } from '../middleware/errorHandler.ts';
+import { stellarService } from '../services/stellarService.ts';
+import { logger } from '../utils/logger.ts';
 
 // Validation schemas
 const registerSchema = z.object({
-  email: z.string().email().max(255),
-  password: z.string().min(6).max(128),
-  fullName: z.string().min(2).max(100).trim()
+  email: z.string().email(),
+  password: z.string().min(8),
+  username: z.string().min(3).optional(),
+  fullName: z.string().min(2).optional(),
+  acceptTerms: z.boolean().refine(val => val === true, 'Must accept terms'),
+  acceptPrivacyPolicy: z.boolean().refine(val => val === true, 'Must accept privacy policy')
 });
 
 const loginSchema = z.object({
-  email: z.string().email().max(255),
-  password: z.string().min(1)
+  email: z.string().email(),
+  password: z.string().min(1),
+  rememberMe: z.boolean().optional()
 });
 
-const walletConnectionSchema = z.object({
-  publicKey: z.string().min(56).max(56), // Stellar public keys are 56 characters
-  signature: z.string().optional() // For signature verification
-});
-
-const refreshTokenSchema = z.object({
-  refreshToken: z.string()
+const connectWalletSchema = z.object({
+  walletAddress: z.string().min(56).max(56),
+  signature: z.string().min(1),
+  message: z.string().min(1)
 });
 
 export class AuthController {
-  /**
-   * Register new user
-   */
-  static register = catchAsync(async (req: Request, res: Response) => {
-    const { email, password, fullName } = registerSchema.parse(req.body);
+  static register = catchAsync(async (req: any, res: any) => {
+    const userData = registerSchema.parse(req.body);
 
     // Check if user already exists
     const { data: existingUser } = await supabaseAdmin
       .from('profiles')
       .select('email')
-      .eq('email', email)
+      .eq('email', userData.email)
       .single();
 
     if (existingUser) {
@@ -49,338 +44,174 @@ export class AuthController {
     }
 
     // Hash password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || '12');
+    const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
 
-    // Create user in Supabase Auth
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: {
-        full_name: fullName
-      }
-    });
-
-    if (authError || !authUser.user) {
-      logger.error('Failed to create auth user:', authError);
-      throw new AppError('Failed to create user account', 500);
-    }
-
-    // Create user profile
-    const { data: profile, error: profileError } = await supabaseAdmin
+    // Create user
+    const { data: user, error } = await supabaseAdmin
       .from('profiles')
       .insert({
-        user_id: authUser.user.id,
-        email,
-        full_name: fullName,
-        kyc_status: 'pending'
+        email: userData.email,
+        username: userData.username,
+        full_name: userData.fullName,
+        password_hash: hashedPassword,
+        kyc_status: 'pending',
+        kyc_level: 0,
+        is_active: true,
+        created_at: new Date().toISOString()
       })
       .select()
       .single();
 
-    if (profileError || !profile) {
-      logger.error('Failed to create user profile:', profileError);
-      
-      // Cleanup auth user if profile creation fails
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
-      
-      throw new AppError('Failed to create user profile', 500);
+    if (error || !user) {
+      logger.error('User registration failed:', error);
+      throw new AppError('Registration failed', 500);
     }
 
     // Generate tokens
-    const accessToken = JWTUtil.generateToken(profile as User);
-    const refreshToken = JWTUtil.generateRefreshToken(profile as User);
+    const tokens = JWTUtil.generateTokens({
+      userId: user.user_id,
+      email: user.email,
+      walletAddress: user.wallet_address,
+      kycStatus: user.kyc_status
+    });
 
-    logger.info(`User registered successfully: ${email}`);
+    logger.info(`New user registered: ${user.email}`);
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'Registration successful',
       data: {
         user: {
-          id: profile.id,
-          email: profile.email,
-          fullName: profile.full_name,
-          kycStatus: profile.kyc_status,
-          walletAddress: profile.wallet_address,
-          createdAt: profile.created_at
+          email: user.email,
+          username: user.username,
+          fullName: user.full_name,
+          kycStatus: user.kyc_status,
+          isActive: user.is_active,
+          createdAt: user.created_at
         },
-        tokens: {
-          accessToken,
-          refreshToken
-        }
+        tokens
       }
     });
   });
 
-  /**
-   * Login user
-   */
-  static login = catchAsync(async (req: Request, res: Response) => {
-    const { email, password } = loginSchema.parse(req.body);
+  static login = catchAsync(async (req: any, res: any) => {
+    const { email, password, rememberMe } = loginSchema.parse(req.body);
 
-    // Get user profile
-    const { data: profile, error: profileError } = await supabaseAdmin
+    // Get user with password
+    const { data: user, error } = await supabaseAdmin
       .from('profiles')
       .select('*')
       .eq('email', email)
       .single();
 
-    if (profileError || !profile) {
+    if (error || !user) {
       throw new AppError('Invalid email or password', 401);
     }
 
-    // Verify password with Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (authError || !authData.user) {
-      throw new AppError('Invalid email or password', 401);
+    if (!user.is_active) {
+      throw new AppError('Account is deactivated', 401);
     }
 
-    // Generate tokens
-    const accessToken = JWTUtil.generateToken(profile as User);
-    const refreshToken = JWTUtil.generateRefreshToken(profile as User);
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      throw new AppError('Invalid email or password', 401);
+    }
 
     // Update last login
     await supabaseAdmin
       .from('profiles')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('user_id', profile.user_id);
+      .update({ last_login: new Date().toISOString() })
+      .eq('user_id', user.user_id);
 
-    logger.info(`User logged in: ${email}`);
+    // Generate tokens
+    const tokens = JWTUtil.generateTokens({
+      userId: user.user_id,
+      email: user.email,
+      walletAddress: user.wallet_address,
+      kycStatus: user.kyc_status
+    });
+
+    logger.info(`User logged in: ${user.email}`);
 
     res.status(200).json({
       success: true,
       message: 'Login successful',
       data: {
         user: {
-          id: profile.id,
-          email: profile.email,
-          fullName: profile.full_name,
-          kycStatus: profile.kyc_status,
-          walletAddress: profile.wallet_address,
-          createdAt: profile.created_at
+          email: user.email,
+          username: user.username,
+          fullName: user.full_name,
+          walletAddress: user.wallet_address,
+          kycStatus: user.kyc_status,
+          kycLevel: user.kyc_level,
+          isActive: user.is_active,
+          lastLogin: user.last_login
         },
-        tokens: {
-          accessToken,
-          refreshToken
-        }
+        tokens
       }
     });
   });
 
-  /**
-   * Connect Stellar wallet
-   */
-  static connectWallet = catchAsync(async (req: Request, res: Response) => {
-    if (!req.user) {
-      throw new AppError('Authentication required', 401);
-    }
-
-    const { publicKey } = walletConnectionSchema.parse(req.body);
-
-    // Verify the public key is valid
-    try {
-      Keypair.fromPublicKey(publicKey);
-    } catch (error) {
-      throw new AppError('Invalid Stellar public key', 400);
-    }
-
-    // Check if wallet is already connected to another user
-    const { data: existingWallet } = await supabaseAdmin
-      .from('profiles')
-      .select('user_id, email')
-      .eq('wallet_address', publicKey)
-      .neq('user_id', req.user.user_id)
-      .single();
-
-    if (existingWallet) {
-      throw new AppError('This wallet is already connected to another account', 400);
-    }
-
-    // Get account info from Stellar network
-    let accountExists = false;
-    try {
-      await stellarService.getAccountInfo(publicKey);
-      accountExists = true;
-    } catch (error) {
-      // Account doesn't exist yet, which is fine
-      logger.info(`Wallet ${publicKey} not yet funded on Stellar network`);
-    }
-
-    // Update user profile with wallet address
-    const { data: updatedProfile, error } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        wallet_address: publicKey,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', req.user.user_id)
-      .select()
-      .single();
-
-    if (error || !updatedProfile) {
-      logger.error('Failed to update wallet address:', error);
-      throw new AppError('Failed to connect wallet', 500);
-    }
-
-    // If account exists, check PLAT balance
-    let platBalance = '0';
-    if (accountExists) {
-      try {
-        platBalance = await stellarService.getPlatBalance(publicKey);
-      } catch (error) {
-        logger.warn(`Failed to get PLAT balance for ${publicKey}:`, error);
-      }
-    }
-
-    logger.info(`Wallet connected for user ${req.user.email}: ${publicKey}`);
-
-    res.status(200).json({
-      success: true,
-      message: 'Wallet connected successfully',
-      data: {
-        walletAddress: publicKey,
-        accountExists,
-        platBalance,
-        needsTrustline: accountExists && platBalance === '0'
-      }
-    });
-  });
-
-  /**
-   * Refresh access token
-   */
-  static refreshToken = catchAsync(async (req: Request, res: Response) => {
-    const { refreshToken } = refreshTokenSchema.parse(req.body);
-
-    // Verify refresh token
-    const decoded = JWTUtil.verifyRefreshToken(refreshToken);
-
-    // Get user profile
-    const { data: profile, error } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('user_id', decoded.userId)
-      .single();
-
-    if (error || !profile) {
-      throw new AppError('Invalid refresh token', 401);
-    }
-
-    // Generate new tokens
-    const accessToken = JWTUtil.generateToken(profile as User);
-    const newRefreshToken = JWTUtil.generateRefreshToken(profile as User);
-
-    res.status(200).json({
-      success: true,
-      message: 'Tokens refreshed successfully',
-      data: {
-        tokens: {
-          accessToken,
-          refreshToken: newRefreshToken
-        }
-      }
-    });
-  });
-
-  /**
-   * Get current user profile
-   */
-  static getProfile = catchAsync(async (req: Request, res: Response) => {
-    if (!req.user) {
-      throw new AppError('Authentication required', 401);
-    }
-
-    // Get wallet info if connected
-    let walletInfo = null;
-    if (req.user.wallet_address) {
-      try {
-        const accountInfo = await stellarService.getAccountInfo(req.user.wallet_address);
-        const platBalance = await stellarService.getPlatBalance(req.user.wallet_address);
-        
-        walletInfo = {
-          publicKey: req.user.wallet_address,
-          platBalance,
-          xlmBalance: accountInfo.balance.find(b => b.asset_type === 'native')?.balance || '0',
-          accountExists: true
-        };
-      } catch (error) {
-        walletInfo = {
-          publicKey: req.user.wallet_address,
-          platBalance: '0',
-          xlmBalance: '0',
-          accountExists: false
-        };
-      }
-    }
+  static getProfile = catchAsync(async (req: any, res: any) => {
+    const user = req.user;
 
     res.status(200).json({
       success: true,
       data: {
         user: {
-          id: req.user.id,
-          email: req.user.email,
-          fullName: req.user.full_name,
-          kycStatus: req.user.kyc_status,
-          walletAddress: req.user.wallet_address,
-          createdAt: req.user.created_at,
-          updatedAt: req.user.updated_at
-        },
-        wallet: walletInfo
+          email: user.email,
+          username: user.username,
+          fullName: user.full_name,
+          avatarUrl: user.avatar_url,
+          walletAddress: user.wallet_address,
+          kycStatus: user.kyc_status,
+          kycLevel: user.kyc_level,
+          isActive: user.is_active,
+          createdAt: user.created_at,
+          lastLogin: user.last_login,
+          preferences: user.preferences
+        }
       }
     });
   });
 
-  /**
-   * Logout user
-   */
-  static logout = catchAsync(async (req: Request, res: Response) => {
-    // In a production app, you might want to blacklist the JWT token
-    // For now, we'll just return success and let the client delete the token
-    
-    logger.info(`User logged out: ${req.user?.email || 'unknown'}`);
-
-    res.status(200).json({
-      success: true,
-      message: 'Logged out successfully'
-    });
-  });
-
-  /**
-   * Update user profile
-   */
-  static updateProfile = catchAsync(async (req: Request, res: Response) => {
-    if (!req.user) {
-      throw new AppError('Authentication required', 401);
-    }
-
+  static updateProfile = catchAsync(async (req: any, res: any) => {
     const updateSchema = z.object({
-      fullName: z.string().min(2).max(100).trim().optional()
+      username: z.string().min(3).optional(),
+      fullName: z.string().min(2).optional(),
+      avatarUrl: z.string().url().optional(),
+      preferences: z.object({
+        theme: z.enum(['light', 'dark', 'system']).optional(),
+        language: z.string().optional(),
+        currency: z.string().optional(),
+        notifications: z.object({
+          email: z.boolean(),
+          push: z.boolean(),
+          sms: z.boolean()
+        }).optional(),
+        privacy: z.object({
+          showProfile: z.boolean(),
+          showActivity: z.boolean()
+        }).optional()
+      }).optional()
     });
 
-    const { fullName } = updateSchema.parse(req.body);
+    const updates = updateSchema.parse(req.body);
+    const userId = req.user.user_id;
 
-    const updates: any = {
-      updated_at: new Date().toISOString()
-    };
-
-    if (fullName !== undefined) {
-      updates.full_name = fullName;
-    }
-
-    const { data: updatedProfile, error } = await supabaseAdmin
+    const { data: updatedUser, error } = await supabaseAdmin
       .from('profiles')
-      .update(updates)
-      .eq('user_id', req.user.user_id)
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
       .select()
       .single();
 
-    if (error || !updatedProfile) {
-      logger.error('Failed to update profile:', error);
+    if (error || !updatedUser) {
       throw new AppError('Failed to update profile', 500);
     }
 
@@ -389,14 +220,94 @@ export class AuthController {
       message: 'Profile updated successfully',
       data: {
         user: {
-          id: updatedProfile.id,
-          email: updatedProfile.email,
-          fullName: updatedProfile.full_name,
-          kycStatus: updatedProfile.kyc_status,
-          walletAddress: updatedProfile.wallet_address,
-          updatedAt: updatedProfile.updated_at
+          email: updatedUser.email,
+          username: updatedUser.username,
+          fullName: updatedUser.full_name,
+          avatarUrl: updatedUser.avatar_url,
+          walletAddress: updatedUser.wallet_address,
+          kycStatus: updatedUser.kyc_status,
+          preferences: updatedUser.preferences,
+          updatedAt: updatedUser.updated_at
         }
       }
+    });
+  });
+
+  static connectWallet = catchAsync(async (req: any, res: any) => {
+    const { walletAddress, signature, message } = connectWalletSchema.parse(req.body);
+    const userId = req.user.user_id;
+
+    // Verify wallet signature
+    const isValidSignature = JWTUtil.verifyWalletSignature(walletAddress, signature, message);
+    if (!isValidSignature) {
+      throw new AppError('Invalid wallet signature', 400);
+    }
+
+    // Check if wallet is already connected to another user
+    const { data: existingWallet } = await supabaseAdmin
+      .from('profiles')
+      .select('user_id, email')
+      .eq('wallet_address', walletAddress)
+      .neq('user_id', userId)
+      .single();
+
+    if (existingWallet) {
+      throw new AppError('Wallet is already connected to another account', 400);
+    }
+
+    // Update user with wallet address
+    const { data: updatedUser, error } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        wallet_address: walletAddress,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error || !updatedUser) {
+      throw new AppError('Failed to connect wallet', 500);
+    }
+
+    logger.info(`Wallet connected for user ${req.user.email}: ${walletAddress}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Wallet connected successfully',
+      data: {
+        walletAddress: updatedUser.wallet_address,
+        connectedAt: updatedUser.updated_at
+      }
+    });
+  });
+
+  static refreshToken = catchAsync(async (req: any, res: any) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      throw new AppError('Refresh token is required', 400);
+    }
+
+    try {
+      const newTokens = await JWTUtil.refreshAccessToken(refreshToken);
+
+      res.status(200).json({
+        success: true,
+        message: 'Token refreshed successfully',
+        data: newTokens
+      });
+    } catch (error) {
+      throw new AppError('Invalid or expired refresh token', 401);
+    }
+  });
+
+  static logout = catchAsync(async (req: any, res: any) => {
+    // In a more complete implementation, you would invalidate the refresh token here
+    
+    res.status(200).json({
+      success: true,
+      message: 'Logout successful'
     });
   });
 }
