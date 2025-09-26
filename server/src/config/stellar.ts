@@ -1,13 +1,14 @@
-import { 
-  Server, 
+import pkg from '@stellar/stellar-sdk';
+const { 
   Keypair, 
   Networks, 
   Account,
   TransactionBuilder,
   Operation,
   Asset,
-  Memo
-} from '@stellar/stellar-sdk';
+  Memo,
+  Horizon
+} = pkg;
 import { logger } from '../utils/logger.js';
 
 // Network configuration
@@ -30,8 +31,8 @@ export const STELLAR_CONFIG = {
   TIMEOUT: 180, // 3 minutes
 };
 
-// Initialize Stellar Server
-export const stellarServer = new Server(STELLAR_CONFIG.HORIZON_URL);
+// Initialize Stellar Server (correct syntax)
+export const stellarServer = new Horizon.Server(STELLAR_CONFIG.HORIZON_URL);
 
 // Validate configuration
 export const validateStellarConfig = (): boolean => {
@@ -99,3 +100,6 @@ export const testStellarConnection = async (): Promise<boolean> => {
     return false;
   }
 };
+
+// Export additional classes for use in other files
+export { Keypair, Asset, Memo, Operation, TransactionBuilder, Account, Horizon };
