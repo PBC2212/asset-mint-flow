@@ -1,5 +1,5 @@
-import {
-  Server,
+import pkg from '@stellar/stellar-sdk';
+const { 
   Keypair,
   Account,
   TransactionBuilder,
@@ -7,8 +7,10 @@ import {
   Asset,
   Memo,
   MemoType,
-  BASE_FEE
-} from '@stellar/stellar-sdk';
+  BASE_FEE,
+  Horizon
+} = pkg;
+
 import {
   stellarServer,
   STELLAR_CONFIG,
@@ -53,7 +55,7 @@ export interface TrustlineResult {
 }
 
 class StellarService {
-  private server: Server;
+  private server: Horizon.Server;
   private platAsset: Asset;
 
   constructor() {
